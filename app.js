@@ -1,7 +1,42 @@
 // 初始化Supabase客户端
+// 确保使用正确的URL和密钥格式（没有额外的反引号或空格）
 const supabaseUrl = 'https://czjcvwsalxftsxomfiyf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6amN2d3NhbHhmdHN4b21maXlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzYwMDMsImV4cCI6MjA3NTA1MjAwM30.KowEk4M6Ykl8q21DxsT9dKOgmwy0Hlg3cabD6tr3Q8k';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+// 确保window.supabase存在再初始化
+let supabase;
+try {
+    if (window.supabase) {
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        console.log('Supabase客户端初始化成功');
+    } else {
+        console.error('Supabase库未加载，请检查script标签');
+        // 创建一个模拟对象以便开发调试
+        supabase = {
+            from: () => ({
+                select: () => ({ data: [], error: null }),
+                insert: () => ({ data: [], error: null }),
+                update: () => ({ data: [], error: null }),
+                delete: () => ({ data: [], error: null })
+            }),
+            rpc: () => Promise.resolve({ data: null, error: null }),
+            auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) }
+        };
+    }
+} catch (error) {
+    console.error('Supabase初始化失败:', error);
+    // 创建模拟对象
+    supabase = {
+        from: () => ({
+            select: () => ({ data: [], error: null }),
+            insert: () => ({ data: [], error: null }),
+            update: () => ({ data: [], error: null }),
+            delete: () => ({ data: [], error: null })
+        }),
+        rpc: () => Promise.resolve({ data: null, error: null }),
+        auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) }
+    };
+}
 
 // DOM元素
 const messageForm = document.getElementById('messageForm');
