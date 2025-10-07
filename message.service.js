@@ -17,6 +17,7 @@ export async function getMessages(options = {}) {
     try {
         const supabase = getSupabaseClient();
         if (!supabase) {
+            console.error('Supabase客户端未初始化');
             return { messages: [], total: 0 };
         }
         
@@ -28,12 +29,20 @@ export async function getMessages(options = {}) {
             searchTerm = ''
         } = options;
         
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        console.log('正在获取留言列表，参数:', { page, pageSize, from, to, sortBy, sortOrder, searchTerm });
+        
         let query = supabase.from('messages');
         
         // 添加搜索条件
         if (searchTerm.trim()) {
+            console.log('应用搜索条件:', searchTerm);
+            // 为了安全，转义特殊字符
+            const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query = query.or(
-                `username.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`
+                `username.ilike.%${escapedSearchTerm}%,content.ilike.%${escapedSearchTerm}%`
             );
         }
         
@@ -41,26 +50,57 @@ export async function getMessages(options = {}) {
         query = query.order(sortBy, { ascending: sortOrder === 'asc' });
         
         // 添加分页
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
         query = query.range(from, to);
         
         // 获取数据
         const { data, count, error } = await query.select('*', { count: 'exact' });
         
         if (error) {
+            console.error('Supabase查询错误:', error.message, '代码:', error.code);
+            // 检查是否是权限问题或表不存在的问题
+            if (error.code === '42P01') {
+                console.error('可能是表不存在，请确保已运行初始化脚本');
+            } else if (error.code === '42501') {
+                console.error('可能是权限不足，请检查RLS策略');
+            }
             throw error;
         }
         
-        // 同时获取每条留言的回复
-        const messagesWithReplies = await Promise.all(data.map(async message => {
-            const replies = await getRepliesByMessageId(message.id);
+        console.log('获取到留言数量:', data?.length, '总数量:', count);
+        
+        // 如果没有数据，直接返回空数组
+        if (!data || data.length === 0) {
             return {
-                ...message,
-                replies,
-                has_liked: await hasUserLikedMessage(message.id)
+                messages: [],
+                total: 0,
+                page,
+                pageSize,
+                totalPages: 0
             };
-        }));
+        }
+        
+        // 同时获取每条留言的回复和点赞状态
+        // 使用更安全的方式处理，避免一个失败导致全部失败
+        const messagesWithReplies = [];
+        for (const message of data) {
+            try {
+                const replies = await getRepliesByMessageId(message.id);
+                const hasLiked = await hasUserLikedMessage(message.id);
+                messagesWithReplies.push({
+                    ...message,
+                    replies,
+                    has_liked: hasLiked
+                });
+            } catch (messageError) {
+                console.warn('处理留言数据失败，继续处理其他留言:', messageError);
+                // 即使处理失败，也保留原始留言数据
+                messagesWithReplies.push({
+                    ...message,
+                    replies: [],
+                    has_liked: false
+                });
+            }
+        }
         
         return {
             messages: messagesWithReplies,
@@ -71,7 +111,16 @@ export async function getMessages(options = {}) {
         };
     } catch (error) {
         console.error('获取留言列表失败:', error);
-        showErrorToast('获取留言列表失败');
+        // 提供更具体的错误信息
+        let errorMessage = '获取留言列表失败';
+        if (error.code === '42P01') {
+            errorMessage = '数据表可能不存在，请先运行初始化脚本';
+        } else if (error.code === '42501') {
+            errorMessage = '权限不足，请检查数据库权限设置';
+        } else if (error.code === 'PGRST001') {
+            errorMessage = '数据库连接失败，请检查配置';
+        }
+        showErrorToast(errorMessage);
         return { messages: [], total: 0 };
     }
 }
@@ -327,14 +376,16 @@ async function hasUserLikedMessage(messageId) {
     try {
         // 注意：这是一个简化版本，实际应该使用用户认证信息
         // 这里使用localStorage中的临时用户名进行模拟
-        const username = localStorage.getItem('temp_username') || 'anonymous';
+        let username = localStorage.getItem('temp_username');
         
+        // 如果没有保存的用户名，返回false而不使用默认值
+        // 避免匿名用户的点赞状态干扰
         if (!username) {
             return false;
         }
         
         const supabase = getSupabaseClient();
-        if (!supabase) {
+        if (!supabase || !messageId) {
             return false;
         }
         
@@ -345,7 +396,18 @@ async function hasUserLikedMessage(messageId) {
             .eq('username', username)
             .single();
         
-        return !error;
+        // 正确的逻辑：如果没有错误并且有数据，则表示已点赞
+        // 如果返回404错误（没有找到记录），则表示未点赞
+        // 其他错误则返回false
+        if (error) {
+            if (error.code === 'PGRST116') { // 未找到记录的错误代码
+                return false;
+            }
+            console.warn('检查点赞状态时发生错误:', error);
+            return false;
+        }
+        
+        return data !== null;
     } catch (error) {
         console.error('检查点赞状态失败:', error);
         return false;
