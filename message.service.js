@@ -107,15 +107,16 @@ export async function getMessages(options = {}) {
         // 使用更安全的方式处理，避免一个失败导致全部失败
         const messagesWithReplies = [];
         
-        // 首先尝试获取用户名，如果获取失败则跳过点赞状态检查
+        // 获取用户输入的用户名（如果有）
         let username = null;
         try {
+            // 尝试从localStorage获取保存的用户名
             const storedUsername = localStorage.getItem('username');
             if (storedUsername && storedUsername.trim()) {
                 username = storedUsername.trim();
-                console.log('用户已登录，用户名:', username);
+                console.log('使用保存的用户名:', username);
             } else {
-                console.log('用户未登录，跳过点赞状态检查');
+                console.log('未找到保存的用户名');
             }
         } catch (storageError) {
             console.warn('获取用户名失败:', storageError);
@@ -131,7 +132,7 @@ export async function getMessages(options = {}) {
                 const replies = await getRepliesByMessageId(message.id);
                 console.log(`留言ID: ${message.id} 回复数量: ${replies.length}`);
                 
-                // 只有当用户已登录时才检查点赞状态
+                // 只有当有用户名时才检查点赞状态
                 let hasLiked = false;
                 if (username) {
                     try {
@@ -152,7 +153,7 @@ export async function getMessages(options = {}) {
                         hasLiked = false;
                     }
                 } else {
-                    console.log(`用户未登录，跳过留言 ${message.id} 的点赞状态检查`);
+                    console.log(`未提供用户名，跳过留言 ${message.id} 的点赞状态检查`);
                 }
                 
                 messagesWithReplies.push({
@@ -455,12 +456,12 @@ export async function toggleLike(messageId, username) {
 async function hasUserLikedMessage(messageId, username) {
     try {
         // 优先使用传入的用户名，如果没有则尝试从localStorage获取
-        let user = username || localStorage.getItem('temp_username') || localStorage.getItem('username');
-        
-        // 如果没有找到用户名，返回false
-        if (!user) {
-            return false;
-        }
+    let user = username || localStorage.getItem('username');
+    
+    // 如果没有找到用户名，返回false
+    if (!user) {
+        return false;
+    }
         
         const supabase = getSupabaseClient();
         if (!supabase || !messageId) {
