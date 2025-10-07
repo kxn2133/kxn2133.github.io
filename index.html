@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>留言互动板</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- 头部 -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">留言互动板</h1>
+            <p class="text-gray-600">分享你的想法，与他人交流互动</p>
+        </header>
+
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-xl shadow-md p-6 transform transition hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总留言数</p>
+                        <h3 class="text-3xl font-bold text-blue-600" id="totalMessages">0</h3>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <i class="fa fa-comments text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6 transform transition hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">今日新增</p>
+                        <h3 class="text-3xl font-bold text-green-600" id="todayMessages">0</h3>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fa fa-calendar-check-o text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6 transform transition hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">总评论数</p>
+                        <h3 class="text-3xl font-bold text-purple-600" id="totalComments">0</h3>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <i class="fa fa-reply text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">留言活跃度趋势</h2>
+            <div class="h-64">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 留言表单 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">发表留言</h2>
+            <form id="messageForm" class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">昵称</label>
+                    <input type="text" id="name" name="name" placeholder="请输入你的昵称" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label for="content" class="block text-sm font-medium text-gray-700 mb-1">留言内容</label>
+                    <textarea id="content" name="content" rows="4" placeholder="请输入你的留言内容" 
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                </div>
+                <div class="text-right">
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition shadow-md hover:shadow-lg">
+                        <i class="fa fa-paper-plane mr-2"></i>发表留言
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 留言列表 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">留言列表</h2>
+            <div id="messagesList" class="space-y-6">
+                <!-- 留言将动态加载到这里 -->
+                <div class="text-center py-12 text-gray-500">
+                    <i class="fa fa-comments-o text-4xl mb-4 block"></i>
+                    <p>暂无留言，快来发表第一条留言吧！</p>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button id="loadMoreBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition hidden">
+                    <i class="fa fa-refresh mr-2"></i>加载更多
+                </button>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="text-center text-gray-600 text-sm mt-12">
+            <p>&copy; 2023 留言互动板 - 使用Supabase提供数据库支持</p>
+        </footer>
+    </div>
+
+    <!-- 评论模态框 -->
+    <div id="commentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">发表评论</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="commentParentMessage" class="mb-4 p-4 bg-gray-50 rounded-lg">
+                <!-- 父留言内容将显示在这里 -->
+            </div>
+            <form id="commentForm" class="space-y-4">
+                <input type="hidden" id="parentId" name="parentId">
+                <div>
+                    <label for="commentName" class="block text-sm font-medium text-gray-700 mb-1">昵称</label>
+                    <input type="text" id="commentName" name="commentName" placeholder="请输入你的昵称" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label for="commentContent" class="block text-sm font-medium text-gray-700 mb-1">评论内容</label>
+                    <textarea id="commentContent" name="commentContent" rows="3" placeholder="请输入你的评论内容" 
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                </div>
+                <div class="text-right">
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
+                        <i class="fa fa-reply mr-2"></i>发表评论
+                    </button>
+                </div>
+            </form>
+            <div id="commentsList" class="mt-6 space-y-3">
+                <!-- 评论将动态加载到这里 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
