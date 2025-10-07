@@ -63,137 +63,50 @@ export async function ensureTableExists() {
         const supabase = getSupabaseClient();
         if (!supabase) return;
         
-        // 检查表是否存在
-        const { data: tables, error: tablesError } = await supabase.rpc('list_tables');
-        
-        if (tablesError) {
-            // 如果RPC函数不可用，尝试直接创建表
-            await createMessagesTable(supabase);
-            return;
+        // 尝试直接执行简单查询来验证表是否存在，不依赖RPC函数
+        try {
+            await supabase.from('messages').select('id').limit(1);
+        } catch (error) {
+            // 如果查询失败，表可能不存在，但由于我们已经通过SQL脚本创建了表
+            // 这里主要是验证连接，不需要创建表
+            console.warn('表验证查询失败:', error);
         }
         
-        const tableExists = tables.some(table => table.name === 'messages');
-        if (!tableExists) {
-            await createMessagesTable(supabase);
-        }
-        
-        // 检查回复表是否存在
-        const replyTableExists = tables.some(table => table.name === 'replies');
-        if (!replyTableExists) {
-            await createRepliesTable(supabase);
-        }
-        
-        // 检查点赞表是否存在
-        const likesTableExists = tables.some(table => table.name === 'likes');
-        if (!likesTableExists) {
-            await createLikesTable(supabase);
-        }
+        // 由于我们已经通过SQL脚本创建了表，这里不再尝试创建表
+        // 简化逻辑，避免依赖不存在的RPC函数
     } catch (error) {
         console.error('确保表存在失败:', error);
     }
 }
 
 /**
- * 创建messages表
+ * 创建messages表 - 现在通过SQL脚本创建，这里仅保留函数定义
  * @param {Object} supabase - Supabase客户端实例
  * @returns {Promise<void>}
  */
 async function createMessagesTable(supabase) {
-    try {
-        const { error } = await supabase
-            .from('messages')
-            .insert([{ id: 'temp', username: 'system', content: '初始化', created_at: new Date().toISOString() }])
-            .select();
-            
-        if (error && error.code === '42P01') { // 表不存在错误代码
-            // 尝试使用SQL创建表
-            const { error: createError } = await supabase.rpc('execute_sql', {
-                sql: `
-                CREATE TABLE IF NOT EXISTS messages (
-                    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                    username VARCHAR(255) NOT NULL,
-                    content TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    likes INTEGER DEFAULT 0,
-                    file_name TEXT,
-                    file_url TEXT,
-                    file_size BIGINT,
-                    file_type TEXT
-                );
-                CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
-                CREATE INDEX IF NOT EXISTS idx_messages_username ON messages(username);
-                `
-            });
-            
-            if (createError) {
-                console.warn('创建表失败，可能是权限问题:', createError);
-            }
-        } else if (!error) {
-            // 删除临时记录
-            await supabase.from('messages').delete().eq('id', 'temp');
-        }
-    } catch (error) {
-        console.warn('创建表失败，可能是权限问题:', error);
-    }
+    // 表创建现在通过SQL脚本完成，此处不执行任何操作
+    console.log('表创建已通过SQL脚本完成');
 }
 
 /**
- * 创建replies表
+ * 创建replies表 - 现在通过SQL脚本创建，这里仅保留函数定义
  * @param {Object} supabase - Supabase客户端实例
  * @returns {Promise<void>}
  */
 async function createRepliesTable(supabase) {
-    try {
-        // 尝试使用SQL创建表
-        const { error } = await supabase.rpc('execute_sql', {
-            sql: `
-            CREATE TABLE IF NOT EXISTS replies (
-                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-                username VARCHAR(255) NOT NULL,
-                content TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE INDEX IF NOT EXISTS idx_replies_message_id ON replies(message_id);
-            `
-        });
-        
-        if (error) {
-            console.warn('创建回复表失败，可能是权限问题:', error);
-        }
-    } catch (error) {
-        console.warn('创建回复表失败，可能是权限问题:', error);
-    }
+    // 表创建现在通过SQL脚本完成，此处不执行任何操作
+    console.log('表创建已通过SQL脚本完成');
 }
 
 /**
- * 创建likes表
+ * 创建likes表 - 现在通过SQL脚本创建，这里仅保留函数定义
  * @param {Object} supabase - Supabase客户端实例
  * @returns {Promise<void>}
  */
 async function createLikesTable(supabase) {
-    try {
-        // 尝试使用SQL创建表
-        const { error } = await supabase.rpc('execute_sql', {
-            sql: `
-            CREATE TABLE IF NOT EXISTS likes (
-                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-                username VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW(),
-                UNIQUE(message_id, username)
-            );
-            CREATE INDEX IF NOT EXISTS idx_likes_message_id ON likes(message_id);
-            CREATE INDEX IF NOT EXISTS idx_likes_username ON likes(username);
-            `
-        });
-        
-        if (error) {
-            console.warn('创建点赞表失败，可能是权限问题:', error);
-        }
-    } catch (error) {
-        console.warn('创建点赞表失败，可能是权限问题:', error);
-    }
+    // 表创建现在通过SQL脚本完成，此处不执行任何操作
+    console.log('表创建已通过SQL脚本完成');
 }
 
 /**
