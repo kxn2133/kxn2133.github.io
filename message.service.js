@@ -82,17 +82,70 @@ export async function getMessages(options = {}) {
         // 同时获取每条留言的回复和点赞状态
         // 使用更安全的方式处理，避免一个失败导致全部失败
         const messagesWithReplies = [];
+        
+        // 首先尝试获取用户名，如果获取失败则跳过点赞状态检查
+        let username = null;
+        try {
+            const storedUsername = localStorage.getItem('username');
+            if (storedUsername && storedUsername.trim()) {
+                username = storedUsername.trim();
+                console.log('用户已登录，用户名:', username);
+            } else {
+                console.log('用户未登录，跳过点赞状态检查');
+            }
+        } catch (storageError) {
+            console.warn('获取用户名失败:', storageError);
+            // 即使获取用户名失败，也继续处理留言
+        }
+        
         for (const message of data) {
             try {
+                const messageStartTime = performance.now();
+                console.log(`处理留言ID: ${message.id}`);
+                
+                // 获取回复
                 const replies = await getRepliesByMessageId(message.id);
-                const hasLiked = await hasUserLikedMessage(message.id);
+                console.log(`留言ID: ${message.id} 回复数量: ${replies.length}`);
+                
+                // 只有当用户已登录时才检查点赞状态
+                let hasLiked = false;
+                if (username) {
+                    try {
+                        console.log(`检查用户 ${username} 是否点赞了留言 ${message.id}`);
+                        const likeStartTime = performance.now();
+                        hasLiked = await hasUserLikedMessage(message.id, username);
+                        const likeEndTime = performance.now();
+                        console.log(`检查点赞状态完成，耗时: ${Math.round(likeEndTime - likeStartTime)}ms, 结果: ${hasLiked}`);
+                    } catch (likeError) {
+                        console.warn(`检查留言 ${message.id} 点赞状态失败:`, likeError);
+                        // 记录具体的错误类型
+                        if (likeError.code === 'PGRST116') {
+                            console.warn('错误代码 PGRST116: likes表可能不存在');
+                        } else if (likeError.code === '42501') {
+                            console.warn('错误代码 42501: 访问likes表权限不足');
+                        }
+                        // 出错时默认设为未点赞
+                        hasLiked = false;
+                    }
+                } else {
+                    console.log(`用户未登录，跳过留言 ${message.id} 的点赞状态检查`);
+                }
+                
                 messagesWithReplies.push({
                     ...message,
                     replies,
                     has_liked: hasLiked
                 });
+                
+                const messageEndTime = performance.now();
+                console.log(`处理留言 ${message.id} 完成，耗时: ${Math.round(messageEndTime - messageStartTime)}ms`);
+                
             } catch (messageError) {
                 console.warn('处理留言数据失败，继续处理其他留言:', messageError);
+                // 记录具体的错误信息
+                if (messageError.code) {
+                    console.warn('错误代码:', messageError.code);
+                }
                 // 即使处理失败，也保留原始留言数据
                 messagesWithReplies.push({
                     ...message,
