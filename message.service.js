@@ -202,12 +202,14 @@ export async function getMessageById(messageId) {
         
         // 获取回复
         const replies = await getRepliesByMessageId(messageId);
-        const hasLiked = await hasUserLikedMessage(messageId);
+        // 从localStorage获取用户名，与hasUserLikedMessage函数保持一致
+        const username = localStorage.getItem('temp_username') || localStorage.getItem('username');
+        const hasLiked = await hasUserLikedMessage(messageId, username);
         
         return {
             ...data,
             replies,
-            has_liked
+            has_liked: hasLiked
         };
     } catch (error) {
         console.error('获取留言失败:', error);
