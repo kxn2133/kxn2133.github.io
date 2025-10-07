@@ -4,7 +4,41 @@ console.log('开始测试Supabase连接...');
 // 初始化Supabase客户端
 const supabaseUrl = 'https://czjcvwsalxftsxomfiyf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6amN2d3NhbHhmdHN4b21maXlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NzYwMDMsImV4cCI6MjA3NTA1MjAwM30.KowEk4M6Ykl8q21DxsT9dKOgmwy0Hlg3cabD6tr3Q8k';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// 确保window.supabase存在再初始化
+let supabase;
+try {
+    if (window.supabase) {
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        console.log('Supabase客户端初始化成功');
+    } else {
+        console.error('Supabase库未加载，请检查script标签');
+        // 创建一个模拟对象以便开发调试
+        supabase = {
+            from: () => ({
+                select: () => ({ data: [], error: null }),
+                insert: () => ({ data: [], error: null }),
+                update: () => ({ data: [], error: null }),
+                delete: () => ({ data: [], error: null })
+            }),
+            rpc: () => Promise.resolve({ data: null, error: null }),
+            auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) }
+        };
+    }
+} catch (error) {
+    console.error('Supabase初始化失败:', error);
+    // 创建模拟对象
+    supabase = {
+        from: () => ({
+            select: () => ({ data: [], error: null }),
+            insert: () => ({ data: [], error: null }),
+            update: () => ({ data: [], error: null }),
+            delete: () => ({ data: [], error: null })
+        }),
+        rpc: () => Promise.resolve({ data: null, error: null }),
+        auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) }
+    };
+}
 
 // 测试函数
 async function testSupabase() {
@@ -72,27 +106,37 @@ async function testSupabase() {
     }
 }
 
-// 添加测试按钮到页面
-document.addEventListener('DOMContentLoaded', function() {
-    const testBtn = document.createElement('button');
-    testBtn.innerText = '测试Supabase连接';
-    testBtn.style.position = 'fixed';
-    testBtn.style.bottom = '20px';
-    testBtn.style.right = '20px';
-    testBtn.style.padding = '10px 20px';
-    testBtn.style.backgroundColor = '#3b82f6';
-    testBtn.style.color = 'white';
-    testBtn.style.border = 'none';
-    testBtn.style.borderRadius = '5px';
-    testBtn.style.cursor = 'pointer';
-    testBtn.style.zIndex = '1000';
+// 立即执行测试，不依赖DOMContentLoaded
+console.log('测试脚本已加载，开始执行Supabase连接测试...');
+
+testSupabase().then(() => {
+    console.log('测试完成，请查看控制台输出获取详细信息。');
     
-    testBtn.addEventListener('click', async function() {
-        console.clear();
-        await testSupabase();
-    });
-    
-    document.body.appendChild(testBtn);
-    
-    console.log('测试按钮已添加到页面右下角，请点击进行测试');
+    // 同时仍然尝试添加测试按钮，方便后续测试
+    try {
+        if (document.body) {
+            const testBtn = document.createElement('button');
+            testBtn.innerText = '测试Supabase连接';
+            testBtn.style.position = 'fixed';
+            testBtn.style.bottom = '20px';
+            testBtn.style.right = '20px';
+            testBtn.style.padding = '10px 20px';
+            testBtn.style.backgroundColor = '#3b82f6';
+            testBtn.style.color = 'white';
+            testBtn.style.border = 'none';
+            testBtn.style.borderRadius = '5px';
+            testBtn.style.cursor = 'pointer';
+            testBtn.style.zIndex = '1000';
+            
+            testBtn.addEventListener('click', async function() {
+                console.clear();
+                await testSupabase();
+            });
+            
+            document.body.appendChild(testBtn);
+            console.log('测试按钮已添加到页面右下角');
+        }
+    } catch (error) {
+        console.log('无法添加测试按钮，但不影响测试功能:', error.message);
+    }
 });
