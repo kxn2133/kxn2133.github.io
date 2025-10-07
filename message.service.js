@@ -21,6 +21,12 @@ export async function getMessages(options = {}) {
             return { messages: [], total: 0 };
         }
         
+        console.log('=== 开始获取留言列表 ===');
+        console.log('当前Supabase配置:', {
+            url: config.supabase.url.substring(0, 10) + '...',
+            key: config.supabase.anonKey.substring(0, 10) + '...'
+        });
+        
         const {
             page = 1,
             pageSize = config.app.pageSize,
@@ -32,12 +38,21 @@ export async function getMessages(options = {}) {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        console.log('正在获取留言列表，参数:', { page, pageSize, from, to, sortBy, sortOrder, searchTerm });
+        console.log('查询参数:', { page, pageSize, from, to, sortBy, sortOrder, searchTerm });
         
         let query = supabase.from('messages');
         
-        // 添加搜索条件
-        if (searchTerm.trim()) {
+        // 先尝试一个简单的查询来检查权限
+        try {
+            const simpleTest = await supabase.from('messages').select('id').limit(1);
+            console.log('简单查询测试结果:', simpleTest.data ? '成功' : '失败');
+        } catch (simpleTestError) {
+            console.error('简单查询测试失败:', simpleTestError);
+        }
+        
+        // 为了测试，先不使用searchTerm和range，直接获取所有数据
+        // 移除搜索和分页限制以简化问题
+        if (false && searchTerm.trim()) {
             console.log('应用搜索条件:', searchTerm);
             // 为了安全，转义特殊字符
             const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -49,19 +64,28 @@ export async function getMessages(options = {}) {
         // 添加排序
         query = query.order(sortBy, { ascending: sortOrder === 'asc' });
         
-        // 添加分页
-        query = query.range(from, to);
+        // 暂时不使用range，直接获取所有数据进行测试
+        // query = query.range(from, to);
         
         // 获取数据
+        console.log('执行查询...');
+        const startTime = performance.now();
         const { data, count, error } = await query.select('*', { count: 'exact' });
+        const endTime = performance.now();
+        
+        console.log(`查询完成，耗时: ${Math.round(endTime - startTime)}ms`);
         
         if (error) {
             console.error('Supabase查询错误:', error.message, '代码:', error.code);
+            console.error('完整错误对象:', JSON.stringify(error, null, 2));
             // 检查是否是权限问题或表不存在的问题
             if (error.code === '42P01') {
                 console.error('可能是表不存在，请确保已运行初始化脚本');
             } else if (error.code === '42501') {
                 console.error('可能是权限不足，请检查RLS策略');
+                // 提供具体的修复建议
+                console.error('建议检查Supabase控制台中的RLS策略，确保为messages表添加了public read权限');
+                console.error('可以尝试运行此SQL: CREATE POLICY "Allow public read access to messages" ON messages FOR SELECT USING (true);');
             }
             throw error;
         }
