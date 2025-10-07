@@ -1,0 +1,89 @@
+# 依赖
+/node_modules
+/.pnp
+.pnp.js
+
+# 测试
+/coverage
+
+# 生产构建
+/build
+/dist
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 编辑器目录和文件
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 临时文件
+*.tmp
+*.temp
+.cache
+
+# OS生成的文件
+Thumbs.db
+.DS_Store
+
+# 运行时文件
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# 安全文件
+*.pem
+*.key
+*.cert
+
+# 特定于Windows的文件
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# 特定于macOS的文件
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 特定于Linux的文件
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# 其他不需要的文件
+*.bak
+*.old
+*.swo
+*.swp
