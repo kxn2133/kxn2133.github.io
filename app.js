@@ -87,7 +87,7 @@ async function initApp() {
         initEmojiPicker();
         
         // 尝试从localStorage恢复用户名
-        const savedUsername = localStorage.getItem('temp_username');
+        const savedUsername = localStorage.getItem('username');
         if (savedUsername) {
             usernameInput.value = savedUsername;
         }
@@ -237,7 +237,7 @@ async function handleMessageSubmit(e) {
     
     try {
         // 保存用户名到localStorage
-        localStorage.setItem('temp_username', username);
+        localStorage.setItem('username', username);
         
         let fileInfo = null;
         
@@ -538,8 +538,13 @@ async function handleLike(e) {
     
     if (!messageId) return;
     
-    const username = usernameInput.value.trim() || '匿名用户';
+    const username = usernameInput.value.trim();
     
+    if (!username) {
+        utils.showErrorToast('请先输入用户名以点赞');
+        return;
+    }
+
     try {
         const result = await toggleLike(messageId, username);
         
@@ -609,7 +614,8 @@ async function handleReplySubmit(e) {
         return;
     }
     
-    const username = usernameInput.value.trim() || '匿名用户';
+    const username = usernameInput.value.trim() || '访客';
+
     
     try {
         const reply = await addReply(messageId, username, content);
