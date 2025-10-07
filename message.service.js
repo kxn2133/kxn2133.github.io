@@ -423,17 +423,16 @@ export async function toggleLike(messageId, username) {
 /**
  * 检查用户是否已点赞留言
  * @param {string} messageId - 留言ID
+ * @param {string} username - 用户名（可选，优先使用传入的用户名）
  * @returns {Promise<boolean>} 是否已点赞
  */
-async function hasUserLikedMessage(messageId) {
+async function hasUserLikedMessage(messageId, username) {
     try {
-        // 注意：这是一个简化版本，实际应该使用用户认证信息
-        // 这里使用localStorage中的临时用户名进行模拟
-        let username = localStorage.getItem('temp_username');
+        // 优先使用传入的用户名，如果没有则尝试从localStorage获取
+        let user = username || localStorage.getItem('temp_username') || localStorage.getItem('username');
         
-        // 如果没有保存的用户名，返回false而不使用默认值
-        // 避免匿名用户的点赞状态干扰
-        if (!username) {
+        // 如果没有找到用户名，返回false
+        if (!user) {
             return false;
         }
         
@@ -442,11 +441,13 @@ async function hasUserLikedMessage(messageId) {
             return false;
         }
         
+        console.log(`检查用户 ${user} 是否点赞了留言 ${messageId}`);
+        
         const { data, error } = await supabase
             .from('likes')
             .select('id')
             .eq('message_id', messageId)
-            .eq('username', username)
+            .eq('username', user)
             .single();
         
         // 正确的逻辑：如果没有错误并且有数据，则表示已点赞
